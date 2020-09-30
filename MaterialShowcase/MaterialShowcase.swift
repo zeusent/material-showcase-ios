@@ -53,14 +53,15 @@ open class MaterialShowcase: UIView {
   var targetRippleView: UIView!
   var targetCopyView: UIView!
   var instructionView: MaterialShowcaseInstructionView!
-  
+    
   public var skipButton: (() -> Void)?
   var onTapThrough: (() -> Void)?
   
   // MARK: Public Properties
   // setSkipImage
   public var skipImage = "HintClose"
-  
+  @objc public var shouldAnimateOnce: Bool = false
+    
   // Background
   @objc public var backgroundAlpha: CGFloat = 1.0
   @objc public var backgroundPromptColor: UIColor!
@@ -293,7 +294,11 @@ extension MaterialShowcase {
   }
   
   func startAnimations() {
-    let options: UIView.KeyframeAnimationOptions = [.curveEaseInOut, .repeat]
+    var options: UIView.KeyframeAnimationOptions = [.curveEaseInOut]
+    if !shouldAnimateOnce {
+        options = [.curveEaseInOut, .repeat]
+    }
+    
     UIView.animateKeyframes(withDuration: 1, delay: 0, options: options, animations: {
       UIView.addKeyframe(withRelativeStartTime: 0, relativeDuration: 0.5, animations: {
         self.targetRippleView.alpha = self.ANI_RIPPLE_ALPHA
@@ -322,10 +327,12 @@ extension MaterialShowcase {
     }
     
     //In iPad version InstructionView was add to backgroundView and in iPhone version InstructionView was add to self view
-    addBackground()
+//    addBackground()
     
     addInstructionView(at: center)
     instructionView.layoutIfNeeded()
+    
+    addBackground()
     
     // Disable subview interaction to let users click to general view only
     subviews.forEach({$0.isUserInteractionEnabled = false})
@@ -458,76 +465,68 @@ extension MaterialShowcase {
   }
   
   /// Configures and adds primary label view
-  private func addInstructionView(at center: CGPoint) {
-    instructionView = MaterialShowcaseInstructionView()
-    
-    instructionView.primaryTextAlignment = primaryTextAlignment
-    instructionView.primaryTextFont = primaryTextFont
-    instructionView.primaryTextSize = primaryTextSize
-    instructionView.primaryTextColor = primaryTextColor
-    instructionView.primaryText = primaryText
-    
-    instructionView.secondaryTextAlignment = secondaryTextAlignment
-    instructionView.secondaryTextFont = secondaryTextFont
-    instructionView.secondaryTextSize = secondaryTextSize
-    instructionView.secondaryTextColor = secondaryTextColor
-    instructionView.secondaryText = secondaryText
-    
-    // Calculate x position
-    var xPosition = LABEL_MARGIN
-    
-    // Calculate y position
-    var yPosition: CGFloat!
-    
-    // Calculate instructionView width
-    var width : CGFloat
-    
-    if UIDevice.current.userInterfaceIdiom == .pad {
-      width = backgroundView.frame.width - 2 * xPosition
+    private func addInstructionView(at center: CGPoint) {
+      instructionView = MaterialShowcaseInstructionView()
       
-      if backgroundView.frame.origin.x < 0 {
-        xPosition = abs(backgroundView.frame.origin.x) + xPosition
-      } else if (backgroundView.frame.origin.x + backgroundView.frame.size.width >
-        UIScreen.main.bounds.width) {
-        width = backgroundView.frame.size.width - (xPosition*2)
-      }
-      if xPosition + width > backgroundView.frame.size.width {
-        width = width - CGFloat(xPosition/2)
-      }
+      instructionView.primaryTextAlignment = primaryTextAlignment
+      instructionView.primaryTextFont = primaryTextFont
+      instructionView.primaryTextSize = primaryTextSize
+      instructionView.primaryTextColor = primaryTextColor
+      instructionView.primaryText = primaryText
       
-      if getTargetPosition(target: targetView, container: containerView) == .above {
-        yPosition = (backgroundView.frame.size.height/2) + TEXT_CENTER_OFFSET
+      instructionView.secondaryTextAlignment = secondaryTextAlignment
+      instructionView.secondaryTextFont = secondaryTextFont
+      instructionView.secondaryTextSize = secondaryTextSize
+      instructionView.secondaryTextColor = secondaryTextColor
+      instructionView.secondaryText = secondaryText
+      
+      // Calculate x position
+      var xPosition = LABEL_MARGIN
+      
+      // Calculate y position
+      var yPosition: CGFloat!
+      
+      // Calculate instructionView width
+      var width : CGFloat
+      
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        width = backgroundView.frame.width - xPosition
+        
+        if backgroundView.frame.origin.x < 0 {
+          xPosition = abs(backgroundView.frame.origin.x) + xPosition
+        } else if (backgroundView.frame.origin.x + backgroundView.frame.size.width >
+          UIScreen.main.bounds.width) {
+          width = backgroundView.frame.size.width - (xPosition*2)
+        }
+        if xPosition + width > backgroundView.frame.size.width {
+          width = width - CGFloat(xPosition/2)
+        }
+        
+        if getTargetPosition(target: targetView, container: containerView) == .above {
+          yPosition = (backgroundView.frame.size.height/2) + TEXT_CENTER_OFFSET
+        } else {
+          yPosition = TEXT_CENTER_OFFSET + LABEL_DEFAULT_HEIGHT * 2
+        }
       } else {
-        yPosition = TEXT_CENTER_OFFSET + LABEL_DEFAULT_HEIGHT * 2
-      }
-    } else {
-      width = containerView.frame.size.width - (xPosition*2)
-      if backgroundView.frame.center.x - targetHolderRadius < 0 {
-        width = width - abs(backgroundView.frame.origin.x)
-      } else if (backgroundView.frame.center.x + targetHolderRadius >
-        UIScreen.main.bounds.width) {
-        width = width - abs(backgroundView.frame.origin.x)
-        xPosition = xPosition + abs(backgroundView.frame.origin.x)
+        if getTargetPosition(target: targetView, container: containerView) == .above {
+          yPosition = center.y + TARGET_PADDING +  (targetView.bounds.height / 2 > targetHolderRadius ? targetView.bounds.height / 2 : targetHolderRadius)
+        } else {
+          yPosition = center.y - TEXT_CENTER_OFFSET - LABEL_DEFAULT_HEIGHT * 2
+        }
+        
+        width = containerView.frame.width - (xPosition + xPosition)
       }
       
-      if getTargetPosition(target: targetView, container: containerView) == .above {
-        yPosition = center.y + TARGET_PADDING +  (targetView.bounds.height / 2 > targetHolderRadius ? targetView.bounds.height / 2 : targetHolderRadius)
+      instructionView.frame = CGRect(x: xPosition,
+                                     y: yPosition,
+                                     width: width ,
+                                     height: 0)
+      if UIDevice.current.userInterfaceIdiom == .pad {
+        backgroundView.addSubview(instructionView)
       } else {
-        yPosition = center.y - TEXT_CENTER_OFFSET - LABEL_DEFAULT_HEIGHT * 2
+        addSubview(instructionView)
       }
-      
     }
-    
-    instructionView.frame = CGRect(x: xPosition,
-                                   y: yPosition,
-                                   width: width ,
-                                   height: 0)
-    if UIDevice.current.userInterfaceIdiom == .pad {
-      backgroundView.addSubview(instructionView)
-    } else {
-      addSubview(instructionView)
-    }
-  }
   
   /// Handles user's tap
   private func tapGestureRecoganizer() -> UIGestureRecognizer {
